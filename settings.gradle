@@ -1,0 +1,10 @@
+rootProject.name = 'multi-module'
+include 'user-service'
+include 'toeic-service'
+include 'tx-service'
+include 'chat-service'
+include 'eureka-service'
+include 'gateway-service'
+include 'secret-service'
+include 'config-server'
+
