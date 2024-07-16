@@ -38,3 +38,8 @@ out/
 
 .git/*
 *.yml
+mongodb
+mysql
+postgres
+redis
+
