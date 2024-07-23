@@ -36,10 +36,14 @@ out/
 ### VS Code ###
 .vscode/
 
-.git/*
-*.yml
-mongodb
-mysql
-postgres
-redis
+mongodb/*
+mysql/*
+postgres/*
+redis/*
 
+secret-service/*
+config-service/*
+
+docker/*
+
+config-server

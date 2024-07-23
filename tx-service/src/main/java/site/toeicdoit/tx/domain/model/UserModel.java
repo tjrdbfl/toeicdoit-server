@@ -1,19 +1,19 @@
 package site.toeicdoit.tx.domain.model;
 
 
-import jakarta.persistence.*;
 import lombok.*;
+import jakarta.persistence.*;
+import site.toeicdoit.tx.enums.Registration;
 
 import java.util.List;
 
-@Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
 @Getter
+@Entity
 @ToString(exclude = {"id"})
-public class UserModel extends BaseModel{
-
+public class UserModel extends BaseModel {
     @Id
     @Column(name ="id", nullable = false)
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -28,20 +28,19 @@ public class UserModel extends BaseModel{
     private String phone;
     private Integer toeicLevel;
     private String registration;
-    private Long oauthId;
 
 
     // ====================== user ========================
 
     @Setter
-    @OneToMany(mappedBy = "userId", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<RoleModel> roleIds;
+    @OneToMany(mappedBy = "userId", fetch = FetchType.LAZY)
+    private List<RoleModel> roleModels;
 
     @OneToMany(mappedBy = "userId", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<BoardModel> boardIds;
+    private List<BoardModel> boardModels;
 
     @OneToMany(mappedBy = "userId", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ReplyModel> replyIds;
+    private List<ReplyModel> replyModels;
 
     // ======================= tx =========================
 
@@ -52,7 +51,7 @@ public class UserModel extends BaseModel{
     private List<SubscribeModel> subscribeIds;
 
     @OneToOne(mappedBy = "userId", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
-    private CalendarModel calendarId;
+    private CalendarModel calenderId;
 
 
 }

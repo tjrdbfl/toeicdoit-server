@@ -9,8 +9,12 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import lombok.ToString;
 
+@ToString
 @Getter
+@RequiredArgsConstructor
 public class PrincipalUserDetails implements UserDetails, OAuth2User {
     private UserModel user;
     private Map<String, Object> attributes;

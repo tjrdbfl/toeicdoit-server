@@ -1,9 +1,13 @@
 package site.toeicdoit.user.service.impl;
 
+import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.stereotype.Service;
 import site.toeicdoit.user.domain.dto.BoardDto;
 import site.toeicdoit.user.domain.model.mysql.BoardModel;
@@ -22,16 +26,16 @@ public class BoardServiceImpl implements BoardService {
 
     private final JPAQueryFactory queryFactory;
     private final BoardRepository boardRepository;
-    private final QBoardModel QBoard = QBoardModel.boardModel;
+    private final QBoardModel qBoard = QBoardModel.boardModel;
 
     @Transactional
     @Override
     public Messenger save(BoardDto dto) {
         log.info(">>> Board Service Save 진입: {}", dto);
         BoardModel result = boardRepository.save(dtoToEntity(dto));
-        System.out.println((result instanceof BoardModel) ? "SUCCESS" : "FAILURE");
+        log.info(">>> Board Service Save result : {}", result);
         return Messenger.builder()
-                .message((result instanceof BoardModel) ? "SUCCESS" : "FAILURE")
+                .message(MessageStatus.SUCCESS.name())
                 .build();
     }
 
@@ -49,7 +53,7 @@ public class BoardServiceImpl implements BoardService {
 
     @Override
     public List<BoardDto> findAll() {
-        return boardRepository.findAll().stream().map(i -> entityToDto(i)).toList();
+        return boardRepository.findAll().stream().map(this::entityToDto).toList();
     }
 
     @Override
@@ -58,10 +62,14 @@ public class BoardServiceImpl implements BoardService {
         return boardRepository.findById(id).map(this::entityToDto);
     }
 
+    @Override
+    public Boolean existById(Long id) {
+        return boardRepository.existsById(id);
+    }
 
     @Override
-    public Boolean existsById(Long id) {
-        return boardRepository.existsById(id);
+    public Boolean existByEmail(String email) {
+        return queryFactory.selectFrom(qBoard).where(qBoard.userId.email.eq(email)).fetchAll() != null;
     }
 
 
@@ -69,11 +77,11 @@ public class BoardServiceImpl implements BoardService {
     @Override
     public Messenger modify(BoardDto dto) {
         log.info(">>> Board Service Modify 진입: {}", dto);
-        Long result = queryFactory.update(QBoard)
-                .set(QBoard.title, dto.getTitle())
-                .set(QBoard.content, dto.getContent())
-                .set(QBoard.category, dto.getCategory())
-                .where(QBoard.id.eq(dto.getId()))
+        Long result = queryFactory.update(qBoard)
+                .set(qBoard.title, dto.getTitle())
+                .set(qBoard.content, dto.getContent())
+                .set(qBoard.category, dto.getCategory())
+                .where(qBoard.id.eq(dto.getId()))
                 .execute();
         log.info(">>> Board modify 결과(Query DSL): {}", result);
         return Messenger.builder()
@@ -81,27 +89,49 @@ public class BoardServiceImpl implements BoardService {
                 .build();
     }
 
+    @Override
+    public Messenger countAll() {
+        return Messenger.builder().count(boardRepository.count()).build();
+    }
+
 
     @Override
-    public List<BoardModel> findByTypes(String type) {
+    public Page<BoardDto> findAllByTypes(String type, Pageable pageable) {
         log.info(">>> board findByTypes 진입 : {}", type);
-        List<BoardModel> result = queryFactory
-                .select(QBoard)
-                .from(QBoard)
-                .where(QBoard.type.eq(type))
-                .fetch();
-        result.stream().forEach(i -> System.out.println(i));
+        List<BoardDto> content = queryFactory.selectFrom(qBoard)
+                .where(qBoard.type.eq(type))
+                .offset(pageable.getOffset())
+                .limit(pageable.getPageSize())
+                .orderBy(qBoard.id.desc())
+                .fetch()
+                .stream().map(this::entityToDto).toList()
+                ;
 
+        JPAQuery<Long> countQuery = queryFactory.select(qBoard.count())
+                .from(qBoard)
+                .where(qBoard.type.eq(type));
 
-
-//                .stream()
-//                .peek(System.out::println)
-//                .map(this::entityToDto)
-//                .toList();
-
-        log.info("result: {}", result.stream().map(i -> entityToDto(i)).toList());
-
-
-        return result;
+        log.info(">>> countQuery : {}", countQuery);
+        return PageableExecutionUtils.getPage(content, pageable, countQuery::fetchOne);
     }
+
+    @Override
+    public List<BoardDto> findAllByUserId(Long id) {
+        List<BoardModel> result = queryFactory.selectFrom(qBoard)
+                .where(qBoard.userId.id.eq(id))
+                .fetch();
+        return result.stream().map(this::entityToDto).toList();
+    }
+
+    @Override
+    public List<BoardDto> findAllByEmail(String email) {
+        log.info(">>> board impl findAllByEmail 진입 : {}", email);
+
+        return existByEmail(email) ?
+                queryFactory.selectFrom(qBoard)
+                .where(qBoard.userId.email.eq(email))
+                .fetch().stream().map(this::entityToDto).toList()
+                : null;
+    }
+
 }

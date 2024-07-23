@@ -4,7 +4,7 @@ package site.toeicdoit.gateway.handler;
 import java.net.URI;
 
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.server.WebFilterExchange;
 import org.springframework.security.web.server.authentication.ServerAuthenticationSuccessHandler;
@@ -34,25 +34,45 @@ public class CustomAuthenticationSuccessHandler implements ServerAuthenticationS
         log.info("::::::getAuthorities 정보: "+authentication.getAuthorities());
         log.info("::::::getCredentials 정보: "+authentication.getCredentials());
 
-        webFilterExchange.getExchange().getResponse().setStatusCode(HttpStatus.OK);
-//        webFilterExchange.getExchange().getResponse().getHeaders().setLocation(URI.create("http://localhost:3000/check"));
+        webFilterExchange.getExchange().getResponse().setStatusCode(HttpStatus.FOUND);
+        webFilterExchange.getExchange().getResponse().getHeaders().setLocation(URI.create("http://localhost:3000"));
         webFilterExchange.getExchange().getResponse().getHeaders().add("Content-Type", "application/json");
 
         return webFilterExchange.getExchange().getResponse()
         .writeWith(
             jwtTokenProvider.generateToken((PrincipalUserDetails)authentication.getPrincipal(), false)
-            .flatMap(accessToken -> 
-                jwtTokenProvider.generateToken((PrincipalUserDetails)authentication.getPrincipal(), true)
-                .flatMap(refreshToken -> 
-                    Mono.just(
-                        MessengerDTO.builder()
-                        .message("로그인 성공")
-                        .accessToken(accessToken)
-                        .refreshToken(refreshToken)
-                        .accessTokenExpired(jwtTokenProvider.getAccessTokenExpired())
-                        .refreshTokenExpired(jwtTokenProvider.getRefreshTokenExpired())
-                        .build()
-                    )
+            .doOnNext(accessToken -> 
+                webFilterExchange
+                .getExchange()
+                .getResponse()
+                .getCookies()
+                .add("accessToken", 
+                    ResponseCookie.from("accessToken", accessToken)
+                    .path("/")
+                    .maxAge(jwtTokenProvider.getAccessTokenExpired())
+                    // .httpOnly(true)
+                    .build()
+                )
+            )
+            .flatMap(i -> jwtTokenProvider.generateToken((PrincipalUserDetails)authentication.getPrincipal(), true))
+            .doOnNext(refreshToken -> 
+                webFilterExchange
+                .getExchange()
+                .getResponse()
+                .getCookies()
+                .add("refreshToken", 
+                    ResponseCookie.from("refreshToken", refreshToken)
+                    .path("/")
+                    .maxAge(jwtTokenProvider.getRefreshTokenExpired())
+                    // .httpOnly(true)
+                    .build()
+                )
+            )
+            .flatMap(i -> 
+                Mono.just(
+                    MessengerDTO.builder()
+                    .message("로그인 성공")
+                    .build()
                 )
             )
             .flatMap(messageDTO -> 

@@ -11,8 +11,6 @@ import java.util.List;
 @Component
 @AllArgsConstructor
 @NoArgsConstructor
-@Getter
-@Setter
 @Data
 @Builder
 public class BoardDto {
@@ -25,7 +23,7 @@ public class BoardDto {
     private List<ReplyModel> replyIds;
 
 
-    private String writer;
+    private String writerName;
     private String createdAt;
     private String updatedAt;
 }

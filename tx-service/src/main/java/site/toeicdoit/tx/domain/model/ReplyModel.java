@@ -24,10 +24,10 @@ public class ReplyModel extends BaseModel {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")
-    private ReplyModel parentId;
+    private ReplyModel parent;
 
-    @OneToMany(mappedBy = "parentId", orphanRemoval = true)
-    private List<ReplyModel> childrenIds;
+    @OneToMany(mappedBy = "parent", orphanRemoval = true)
+    private List<ReplyModel> children;
 
     public ReplyModel(String content) {
         this.content = content;
@@ -42,18 +42,21 @@ public class ReplyModel extends BaseModel {
     }
 
     public void updateParent(ReplyModel ReplyModel) {
-        this.parentId = ReplyModel;
+        this.parent = ReplyModel;
     }
 
     public void changeIsDeleted(Boolean isDeleted) {
         this.isDeleted = isDeleted;
     }
 
+
+
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private UserModel userId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "board_id")
     private BoardModel boardId;
 

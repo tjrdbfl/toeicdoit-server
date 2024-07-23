@@ -56,11 +56,14 @@ dependencies {
     // 유레카
     implementation group: 'org.springframework.cloud', name: 'spring-cloud-starter-netflix-eureka-client', version: '4.1.2'
 
+    // config
+    implementation 'org.springframework.cloud:spring-cloud-starter-config'
+
 //    // JWT
 //    implementation group: 'io.jsonwebtoken', name: 'jjwt-api', version: '0.12.5'
 //    implementation group: 'io.jsonwebtoken', name: 'jjwt-impl', version: '0.12.5'
 //    implementation group: 'io.jsonwebtoken', name: 'jjwt-jackson', version: '0.12.5'
-//    // Security
+    // Security
 //    implementation 'org.springframework.boot:spring-boot-starter-security'
 //    testImplementation 'org.springframework.security:spring-security-test'
 //    //Redis
@@ -71,9 +74,9 @@ dependencies {
 }
 
 // gradle clean 시에 QClass 디렉토리 삭제
-//clean {
-//    delete file('src/main/generated')
-//}
+clean {
+    delete file('src/main/generated')
+}
 
 tasks.named('test') {
     useJUnitPlatform()

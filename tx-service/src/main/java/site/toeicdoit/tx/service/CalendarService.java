@@ -15,7 +15,7 @@ public interface CalendarService extends CommandService<CalendarDto>, QueryServi
         return CalendarDto.builder()
                 .id(entity.getId())
                 .title(entity.getTitle())
-                .isAllDay(entity.isAllDay())
+                .allDay(entity.isAllDay())
                 .userId(entity.getUserId().getId())
                 .startTime(entity.getStartTime())
                 .endTime(entity.getEndTime())
@@ -25,7 +25,7 @@ public interface CalendarService extends CommandService<CalendarDto>, QueryServi
     default CalendarModel dtoToEntity(CalendarDto dto) {
         return CalendarModel.builder()
                 .title(dto.getTitle())
-                .isAllDay(dto.isAllDay())
+                .allDay(dto.isAllDay())
                 .userId(UserModel.builder().id(dto.getUserId()).build())
                 .startTime(dto.getStartTime())
                 .endTime(dto.getEndTime())

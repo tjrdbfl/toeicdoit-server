@@ -1,93 +1,61 @@
 package site.toeicdoit.gateway.filter;
 
-import java.time.Instant;
-import java.util.Base64;
-import java.util.Date;
+import java.util.List;
 
-import javax.crypto.SecretKey;
-
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
-import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
-import jakarta.annotation.PostConstruct;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
+import site.toeicdoit.gateway.domain.vo.ExceptionStatus;
+import site.toeicdoit.gateway.domain.vo.Role;
+import site.toeicdoit.gateway.exception.GatewayException;
+import site.toeicdoit.gateway.service.provider.JwtTokenProvider;
 
 @Slf4j
 @Component
 public class AuthorizationHeaderFilter extends AbstractGatewayFilterFactory<AuthorizationHeaderFilter.Config>{
-    
-    private static final String BEARER = "Bearer ";
 
-    @Value("${jwt.secret}")
-    private String secretKey;
+    private final JwtTokenProvider jwtTokenProvider;
 
-    @Value("${jwt.issuer}")
-    private String issuer;
-
-    @Value("${jwt.expired.access}")
-    private long accessExpired;
-
-    @Value("${jwt.expired.refresh}")
-    private long refreshExpired;
-
-    private SecretKey SECRET_KEY;
-
-    public AuthorizationHeaderFilter() {
+    public AuthorizationHeaderFilter(JwtTokenProvider jwtTokenProvider){ 
         super(Config.class);
-    }
-
-    @PostConstruct
-    public void init(){
-        SECRET_KEY = Keys.hmacShaKeyFor(Base64.getUrlEncoder().encodeToString(secretKey.getBytes()).getBytes());
+        this.jwtTokenProvider = jwtTokenProvider;
     }
     
     @Data
     public static class Config {
-        private String headerName;
-        private String headerValue;
+        private List<Role> roles;
     }
 
     @Override
     public GatewayFilter apply(Config config) {
-        return ((exchange, chain) -> {
-            log.info("Request URL: {}", exchange.getRequest().getURI());
-            if(!exchange.getRequest().getHeaders().containsKey(HttpHeaders.AUTHORIZATION))
-                return onError(exchange, HttpStatus.UNAUTHORIZED, "No Authorization Header");
-            
-            @SuppressWarnings("null")
-            String token = exchange.getRequest().getHeaders().get(HttpHeaders.AUTHORIZATION).get(0);
-            
-            if(token == null || token.startsWith(BEARER) == false)
-                return onError(exchange, HttpStatus.UNAUTHORIZED, "No Token or Invalid Token");
-
-            String jwt = token.substring(BEARER.length());
-
-            try {
-                if (Jwts.parser().verifyWith(SECRET_KEY).build().parseSignedClaims(jwt).getPayload().getExpiration().before(Date.from(Instant.now())))
-                    return onError(exchange, HttpStatus.UNAUTHORIZED, "Token Expired");
-            } catch (Exception e) {
-                return onError(exchange, HttpStatus.UNAUTHORIZED, "Invalid Token");
-            }
-            
-            return chain.filter(exchange);
-        });
+        return ((exchange, chain) -> 
+            Mono.just(exchange)
+                .flatMap(i -> Mono.just(exchange.getRequest().getHeaders().get(HttpHeaders.AUTHORIZATION)))
+                .flatMap(i -> Mono.just(i.get(0)))
+                .switchIfEmpty(Mono.error(new GatewayException(ExceptionStatus.UNAUTHORIZED,"No Authorization Header")))
+                .filterWhen(i -> Mono.just(i.startsWith("Bearer ")))
+                .flatMap(i -> Mono.just(jwtTokenProvider.removeBearer(i)))
+                .filterWhen(i -> Mono.just(jwtTokenProvider.isTokenValid(i, false)))
+                .switchIfEmpty(Mono.error(new GatewayException(ExceptionStatus.UNAUTHORIZED,"Invalid Token")))
+                .flatMap(i -> Mono.just(jwtTokenProvider.extractRoles(i).stream().map(j -> Role.valueOf(j)).toList()))
+                .filter(i -> i.stream().anyMatch(j -> config.getRoles().contains(j)))
+                .switchIfEmpty(Mono.error(new GatewayException(ExceptionStatus.NO_PERMISSION, "No Permission")))
+                .flatMap(i -> chain.filter(exchange))
+                .onErrorResume(GatewayException.class, e -> onError(exchange, HttpStatusCode.valueOf(e.getStatus().getStatus().value()), e.getMessage()))
+                .log()
+        );
     }
 
     private Mono<Void> onError(ServerWebExchange exchange, HttpStatusCode httpStatusCode, String message){        
         log.error("Error Occured : {}, {}, {}", exchange.getRequest().getURI(), httpStatusCode, message);
         exchange.getResponse().setStatusCode(httpStatusCode);
-        DataBuffer buffer = exchange.getResponse().bufferFactory().wrap(message.getBytes());
-        return exchange.getResponse().writeWith(Mono.just(buffer));
+        return exchange.getResponse().writeWith(Mono.just(exchange.getResponse().bufferFactory().wrap(message.getBytes())));
     }
 }

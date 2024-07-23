@@ -25,6 +25,10 @@ jar {
 	enabled = true
 }
 
+ext {
+	set('springCloudVersion', "2023.0.2")
+}
+
 dependencies {
 	// Spring Boot
 	// implementation 'org.springframework.boot:spring-boot-starter'
@@ -45,14 +49,12 @@ dependencies {
 
 	// MongoDB
 	implementation 'org.springframework.boot:spring-boot-starter-data-mongodb-reactive'
-	// implementation group: 'org.mongodb', name: 'mongodb-driver-sync'
-	// implementation 'org.springframework.boot:spring-boot-starter-data-mongodb'
-
 	// Redis
 	// implementation 'org.springframework.boot:spring-boot-starter-data-redis-reactive'
 
 	// Kafka
-	// implementation 'org.springframework.kafka:spring-kafka'
+	implementation 'org.springframework.kafka:spring-kafka'
+	implementation 'io.projectreactor.kafka:reactor-kafka'
 
 	// Lombok
 	compileOnly 'org.projectlombok:lombok'
@@ -76,6 +78,15 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'io.projectreactor:reactor-test'
 	testImplementation 'org.springframework.kafka:spring-kafka-test'
+
+	// config
+	implementation 'org.springframework.cloud:spring-cloud-starter-config'
+}
+
+dependencyManagement {
+	imports {
+		mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+	}
 }
 
 // tasks.named('test') {

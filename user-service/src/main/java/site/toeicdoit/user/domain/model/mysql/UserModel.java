@@ -27,7 +27,7 @@ public class UserModel extends BaseModel{
     private String phone;
     private Integer toeicLevel;
     private String registration;
-    private Long oauthId;
+    private String oauthId;
 
     // ====================== user ========================
 
